@@ -1,43 +1,51 @@
+//mod ta;
+mod key;
+
 use binance::account::*;
 use binance::api::*;
 use binance::config::*;
-
-mod model;
-//mod ta;
+use binance::errors::Error;
+use key::{API_KEY, API_SECRET};
 
 pub struct Trader {
     account: Account,
     symbol: String,
-    balances: Balances,
+    base_balance: f32,
+    quote_balance: f32,
 }
 
 impl Trader {
-    fn init(self) {
+    pub fn new() -> Result<Trader, Error> {
         let config = Config::default().set_rest_api_endpoint("https://testnet.binance.vision");
-        self.account = Binance::new_with_config(
-            Some("a2XZQu8hAcUHJwpYQ9ImJcx6Gm5CjZ9TwB86yWJtYkTKrAv0IToyQ21xrldqeO7S".to_string()),
-            Some("RBrHnQfWZbO65rsZcIpx0aKNqBFfAwlEy1ElBHfcIzEHhJSTTPN3gcKLJ51KdjQQ".to_string()),
-            &config,
-        );
+        let account: Account = Binance::new_with_config(Some(API_KEY), Some(API_SECRET), &config);
 
-        self.symbol = "BTCUSDT".into();
+        let symbol: String = "BTCUSDT".into();
 
         let account_infos = account.get_account();
         match account_infos {
             Ok(account_infos) => {
+                let mut base_balance: f32 = 0.;
+                let mut quote_balance: f32 = 0.;
                 for balance in account_infos.balances {
                     if balance.asset == symbol.get(0..3).unwrap() {
-                        self.base_balance = balance.free.parse().unwrap();
+                        base_balance = balance.free.parse().unwrap();
                     } else if balance.asset == symbol.get(3..).unwrap() {
-                        self.quote_balance = balance.free.parse().unwrap();
+                        quote_balance = balance.free.parse().unwrap();
                     }
                 }
                 println!(
                     "{} - Base: {} - Quote: {}",
-                    symbol, base_balance, quote_balance
+                    symbol, base_balance, quote_balance,
                 );
+                let trader = Trader {
+                    account,
+                    symbol,
+                    base_balance,
+                    quote_balance,
+                };
+                Ok(trader)
             }
-            Err(e) => println!("Error {:?}", e),
+            Err(e) => Err(e),
         }
     }
 }
